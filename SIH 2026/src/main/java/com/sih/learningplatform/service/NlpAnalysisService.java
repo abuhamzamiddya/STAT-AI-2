@@ -1,0 +1,3 @@
+package com.sih.learningplatform.service;
+import opennlp.tools.tokenize.SimpleTokenizer; import org.springframework.stereotype.Service; import java.util.*;
+@Service public class NlpAnalysisService { private final SimpleTokenizer tokenizer=SimpleTokenizer.INSTANCE; public Map<String,Object> analyze(String text){String safe=text==null?"":text.trim();String[] tokens=tokenizer.tokenize(safe);Set<String> terms=new TreeSet<>(String.CASE_INSENSITIVE_ORDER);for(String t:tokens)if(t.matches("[A-Za-z][A-Za-z0-9-]{2,}"))terms.add(t.toLowerCase(Locale.ROOT));return Map.of("characters",safe.length(),"tokens",tokens.length,"keyTerms",terms.stream().limit(30).toList());} }

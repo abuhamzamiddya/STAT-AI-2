@@ -1,0 +1,4 @@
+package com.sih.learningplatform.entity;
+import com.fasterxml.jackson.annotation.JsonManagedReference; import jakarta.persistence.*; import lombok.*; import java.time.*; import java.util.*;
+@Entity @Table(name="quizzes") @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder @ToString
+public class Quiz { @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id; @Column(name="material_id",nullable=false) private Long materialId; @OneToMany(mappedBy="quiz",cascade=CascadeType.ALL,orphanRemoval=true,fetch=FetchType.EAGER) @JsonManagedReference @Builder.Default private List<Question> generatedQuestions=new ArrayList<>(); @Column(name="created_at") @Builder.Default private LocalDateTime createdAt=LocalDateTime.now(); public void addQuestion(Question q){generatedQuestions.add(q);q.setQuiz(this);} }
