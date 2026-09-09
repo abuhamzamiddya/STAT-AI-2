@@ -9,7 +9,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 public class SecurityConfig {
-    @Value("${app.auth.enabled:false}")
+    @Value("${AUTH_ENABLED:false}")
     private boolean authEnabled;
 
     @Bean
@@ -20,7 +20,7 @@ public class SecurityConfig {
             return http.build();
         }
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/health", "/api/health", "/", "/index.html", "/css/**", "/js/**", "/icon-*.svg", "/manifest.json").permitAll()
+                .requestMatchers("/health", "/api/health", "/", "/index.html", "/assets/**", "/icon.svg", "/icon-*.svg", "/manifest.json").permitAll()
                 .anyRequest().authenticated())
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(Customizer.withDefaults()));
         return http.build();
