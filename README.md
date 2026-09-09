@@ -12,10 +12,8 @@ Smart India Hackathon 2026 prototype for competency gap analysis, targeted learn
 - Spring Data JPA
 - H2 for the zero-setup MVP, with PostgreSQL/MySQL drivers available for deployment
 - Optional Spring Security OAuth2 Resource Server for JWT/SSO integration
-- Responsive HTML/CSS/JavaScript frontend with Chart.js/PDF.js/Lucide
+- React 18 + Vite production frontend
 - Docker + Render deployment configuration
-
-Apache OpenNLP 2.5.x is used because its Java 17 requirement matches this project. Apache Tika 3.3.x is retained as the supported Java 11+ maintenance line.
 
 ## Core workflow
 
@@ -39,9 +37,23 @@ Apache OpenNLP 2.5.x is used because its Java 17 requirement matches this projec
 - `GET /api/quiz/{id}`
 - `GET /api/dashboard/overview`
 
+## Frontend
+
+The production UI lives in `frontend-react/` and is built with Vite. The Dockerfile builds the React app first and then packages its `dist/` output into the Spring Boot static resources, so Render serves the complete application from one web service.
+
+For local frontend development:
+
+```bash
+cd frontend-react
+npm install
+npm run dev
+```
+
+Set `VITE_API_URL` only when the frontend needs to call a separate backend. In the deployed single-service build, the API is same-origin.
+
 ## Optional JWT/SSO
 
-Authentication is intentionally disabled by default so the demo remains easy to run. Set `AUTH_ENABLED=true` and configure Spring Security's JWT issuer settings when connecting the platform to an approved identity provider/iGOT SSO environment.
+Authentication is intentionally disabled by default so the demo remains easy to run. Set `AUTH_ENABLED=true` and configure the Spring Security JWT issuer settings when connecting the platform to an approved identity provider/iGOT SSO environment.
 
 ## AI configuration
 
