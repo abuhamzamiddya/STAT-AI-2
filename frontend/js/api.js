@@ -1,1 +1,23 @@
-class ApiClient{constructor(){this.baseUrl=(window.STAT_AI_API_URL||'').trim().replace(/\/$/,'')}async request(path,opt={}){const r=await fetch(this.baseUrl+path,{...opt,headers:{Accept:'application/json',...(opt.body?{'Content-Type':'application/json'}:{})}});const d=(r.headers.get('content-type')||'').includes('json')?await r.json():await r.text();if(!r.ok)throw new Error(d?.message||`Request failed (${r.status})`);return d?.data??d}getDashboardOverview(){return this.request('/api/dashboard/overview')}analyzeCompetencyGap(id){return this.request(`/api/gaps/analyze/${id}`,{method:'POST'})}getRecommendedCourses(id){return this.request(`/api/training/recommend/${id}`)}generateQuiz(p){return this.request('/api/quiz/generate',{method:'POST',body:JSON.stringify(p)})}getQuizById(id){return this.request(`/api/quiz/${id}`)}}window.apiClient=new ApiClient();
+class ApiClient {
+    constructor() {
+        const configured = (window.STAT_AI_API_URL || '').trim().replace(/\/$/, '');
+        const local = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+        this.baseUrl = configured || (local ? '' : '');
+    }
+    async request(path, options = {}) {
+        const response = await fetch(this.baseUrl + path, {
+            ...options,
+            headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...(options.headers || {}) }
+        });
+        const data = (response.headers.get('content-type') || '').includes('json') ? await response.json() : await response.text();
+        if (!response.ok) throw new Error(data?.message || `Request failed (${response.status})`);
+        return data?.data ?? data;
+    }
+    getDashboardOverview(){ return this.request('/api/dashboard/overview'); }
+    analyzeCompetencyGap(id){ return this.request(`/api/gaps/analyze/${encodeURIComponent(id)}`, {method:'POST'}); }
+    getRecommendedCourses(id){ return this.request(`/api/training/recommend/${encodeURIComponent(id)}`); }
+    generateQuiz(payload){ return this.request('/api/quiz/generate', {method:'POST',body:JSON.stringify(payload)}); }
+    scoreAdaptiveQuiz(payload){ return this.request('/api/adaptive/score', {method:'POST',body:JSON.stringify(payload)}); }
+    getQuizById(id){ return this.request(`/api/quiz/${encodeURIComponent(id)}`); }
+}
+window.apiClient = new ApiClient();
