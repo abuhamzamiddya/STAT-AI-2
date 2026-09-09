@@ -5,9 +5,12 @@ services:
     plan: free
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    healthCheckPath: /health
     autoDeployTrigger: commit
     envVars:
       - key: PORT
         value: "10000"
+      - key: AUTH_ENABLED
+        value: "false"
       - key: OPENAI_API_KEY
         sync: false
