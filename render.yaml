@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: stat-ai
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: commit
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: OPENAI_API_KEY
+        sync: false
