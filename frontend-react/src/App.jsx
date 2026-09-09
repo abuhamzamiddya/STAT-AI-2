@@ -1,0 +1,113 @@
+import React, { useEffect, useMemo, useState } from 'react'
+
+const API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+const employees = [
+  { id: 1, name: 'Diwakar Snehi', initials: 'DS', role: 'Assistant Section Officer' },
+  { id: 2, name: 'Mehtab Alam', initials: 'MA', role: 'Section Officer' },
+  { id: 3, name: 'Manali', initials: 'M', role: 'Data Analyst' }
+]
+
+async function request(path, options = {}) {
+  const res = await fetch(`${API}${path}`, { ...options, headers: { Accept: 'application/json', ...(options.body ? { 'Content-Type': 'application/json' } : {}) } })
+  const raw = await res.text()
+  let data = raw
+  try { data = raw ? JSON.parse(raw) : null } catch {}
+  if (!res.ok) throw new Error(data?.message || `Request failed (${res.status})`)
+  return data?.data ?? data
+}
+
+function App() {
+  const [tab, setTab] = useState('dashboard')
+  const [employee, setEmployee] = useState(1)
+  const [dashboard, setDashboard] = useState(null)
+  const [gap, setGap] = useState(null)
+  const [courses, setCourses] = useState([])
+  const [quiz, setQuiz] = useState(null)
+  const [answers, setAnswers] = useState({})
+  const [score, setScore] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [theme, setTheme] = useState(localStorage.getItem('stat-ai-theme') || 'light')
+
+  const current = useMemo(() => employees.find(e => e.id === employee) || employees[0], [employee])
+  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem('stat-ai-theme', theme) }, [theme])
+  useEffect(() => { loadDashboard() }, [])
+
+  async function loadDashboard() {
+    try { setDashboard(await request('/api/dashboard/overview')) } catch (e) { setError(e.message) }
+  }
+  async function analyze() {
+    setLoading(true); setError('')
+    try { setGap(await request(`/api/gaps/analyze/${employee}`, { method: 'POST' })); setTab('gap') }
+    catch (e) { setError(e.message) } finally { setLoading(false) }
+  }
+  async function recommend() {
+    setLoading(true); setError('')
+    try { const data = await request(`/api/training/recommend/${employee}`); setCourses(Array.isArray(data) ? data : data?.recommendations || data?.courses || []); setTab('training') }
+    catch (e) { setError(e.message) } finally { setLoading(false) }
+  }
+  async function generateQuiz() {
+    setLoading(true); setError(''); setScore(null); setAnswers({})
+    try {
+      const data = await request('/api/quiz/generate', { method: 'POST', body: JSON.stringify({ title: 'National Accounts Statistics', documentText: 'National Accounts Statistics describe production, income and expenditure measures used to understand the Indian economy. Gross Value Added is output minus intermediate consumption. Evidence-based official statistics support public policy and planning.' }) })
+      setQuiz(data); setTab('quiz')
+    } catch (e) { setError(e.message) } finally { setLoading(false) }
+  }
+  async function submitAdaptive() {
+    if (!quiz?.questions?.length) return
+    const results = quiz.questions.map((q, i) => ({ questionId: q.id || i + 1, correct: answers[i] === q.correctAnswer, difficulty: i % 3 === 0 ? 'EASY' : i % 3 === 1 ? 'MEDIUM' : 'HARD' }))
+    try {
+      const data = await request('/api/adaptive/score', { method: 'POST', body: JSON.stringify({ employeeId: employee, results }) })
+      setScore(data)
+    } catch (e) { setError(e.message) }
+  }
+
+  return <div className="app-shell">
+    <aside className="sidebar">
+      <div className="brand"><div className="brand-mark">S</div><div><b>Stat-ai</b><span>Learning Intelligence</span></div></div>
+      <nav>{[['dashboard','⌂','Dashboard'],['gap','◈','Competency Gap'],['training','▣','Training'],['quiz','✓','Quiz Studio']].map(([id,icon,label]) => <button className={tab === id ? 'nav active' : 'nav'} onClick={() => setTab(id)} key={id}><span>{icon}</span>{label}</button>)}</nav>
+      <div className="sidebar-footer">MoSPI • iGOT aligned<br/><small>AI-enabled learning MVP</small></div>
+    </aside>
+    <main className="main">
+      <header className="topbar"><div><p className="eyebrow">OFFICIAL STATISTICAL SYSTEM</p><h1>{tab === 'dashboard' ? 'Learning dashboard' : tab === 'gap' ? 'Competency intelligence' : tab === 'training' ? 'Recommended learning' : 'Quiz studio'}</h1></div><div className="top-actions"><select value={employee} onChange={e => setEmployee(Number(e.target.value))}>{employees.map(e => <option value={e.id} key={e.id}>{e.name}</option>)}</select><button className="icon-btn" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Toggle theme">{theme === 'dark' ? '☀' : '☾'}</button><div className="avatar">{current.initials}</div></div></header>
+      {error && <div className="alert">{error}<button onClick={() => setError('')}>×</button></div>}
+      <section className="content">
+        {tab === 'dashboard' && <Dashboard data={dashboard} employee={current} onAnalyze={analyze} onTraining={recommend} loading={loading} />}
+        {tab === 'gap' && <Gap data={gap} employee={current} onAnalyze={analyze} onTraining={recommend} loading={loading} />}
+        {tab === 'training' && <Training courses={courses} employee={current} onLoad={recommend} loading={loading} />}
+        {tab === 'quiz' && <Quiz quiz={quiz} answers={answers} setAnswers={setAnswers} score={score} onGenerate={generateQuiz} onSubmit={submitAdaptive} loading={loading} />}
+      </section>
+    </main>
+  </div>
+}
+
+function Dashboard({ data, employee, onAnalyze, onTraining, loading }) {
+  const metrics = data || {}
+  return <>
+    <div className="hero"><div><span className="pill">● AI learning engine ready</span><h2>Build capability with evidence, not guesswork.</h2><p>Analyze role competencies, identify priority gaps and move directly into targeted learning.</p></div><div className="hero-actions"><button className="primary" onClick={onAnalyze} disabled={loading}>{loading ? 'Analyzing…' : 'Analyze competency gap'}</button><button className="secondary" onClick={onTraining}>View training</button></div></div>
+    <div className="section-head"><div><h3>Overview</h3><p>Selected learner: <b>{employee.name}</b> · {employee.role}</p></div></div>
+    <div className="metric-grid">{[['Employees', metrics.totalEmployees ?? 3, 'Active profiles'],['Competencies', metrics.totalCompetencies ?? '—', 'Role-aligned'],['Learning materials', metrics.totalLearningMaterials ?? '—', 'Available'],['Quizzes', metrics.totalQuizzes ?? '—', 'Generated']].map(([a,b,c]) => <div className="card metric" key={a}><span>{a}</span><strong>{b}</strong><small>{c}</small></div>)}</div>
+    <div className="two-col"><div className="card"><div className="card-head"><div><h3>How Stat-ai works</h3><p>A simple competency-to-learning loop.</p></div></div><div className="steps">{[['01','Analyze','Map role requirements against demonstrated capability.'],['02','Prioritize','Rank gaps by learning impact.'],['03','Learn','Connect each gap to a targeted course.'],['04','Assess','Generate a quiz and measure mastery.']].map(x => <div className="step" key={x[0]}><b>{x[0]}</b><div><strong>{x[1]}</strong><p>{x[2]}</p></div></div>)}</div></div><div className="card callout"><span className="pill orange">PPT / demo ready</span><h3>Designed for public-sector learning</h3><p>REST APIs, Spring Boot, OpenAI, OpenNLP/Tika, adaptive scoring and a responsive React interface.</p><button className="secondary" onClick={onAnalyze}>Start with {employee.name.split(' ')[0]}</button></div></div>
+  </>
+}
+
+function Gap({ data, employee, onAnalyze, onTraining, loading }) {
+  const score = Number(data?.overallScore ?? data?.score ?? 72)
+  const skills = data?.skillGaps || data?.competencies || data?.gaps || []
+  return <>
+    <div className="page-actions"><div><span className="pill">{employee.name}</span><h2>Competency gap analysis</h2><p>Role-aware assessment with prioritized development areas.</p></div><button className="primary" onClick={onAnalyze} disabled={loading}>{loading ? 'Refreshing…' : 'Run analysis'}</button></div>
+    <div className="gap-grid"><div className="card score-card"><span>Overall competency</span><div className="score-ring" style={{'--score':`${score * 3.6}deg`}}><strong>{score}%</strong></div><p>Current estimated readiness</p></div><div className="card"><div className="card-head"><div><h3>Priority gaps</h3><p>Use these as the next learning targets.</p></div></div>{skills.length ? skills.slice(0,6).map((s,i) => <div className="skill" key={i}><div><strong>{s.skillName || s.name || `Competency ${i+1}`}</strong><small>{s.priority || (i < 2 ? 'High priority' : 'Development')}</small></div><div className="bar"><i style={{width:`${Math.max(18, Math.min(92, Number(s.score ?? s.currentLevel ?? 45)))}%`}} /></div></div>) : <div className="empty"><b>Analysis result is ready to explore.</b><p>Connect the returned skill matrix here when the backend provides competency details.</p></div>}</div></div>
+    <div className="card next"><div><span className="pill orange">Next best action</span><h3>Turn gaps into a learning plan</h3><p>Open the recommendation engine for {employee.name}.</p></div><button className="primary" onClick={onTraining}>Recommend training →</button></div>
+  </>
+}
+
+function Training({ courses, employee, onLoad, loading }) {
+  const list = courses.length ? courses : [{title:'Official Statistics & Evidence-Based Policy',description:'Build practical understanding of official statistics and policy use.',provider:'iGOT Karmayogi',duration:'Self-paced',level:'Recommended'},{title:'Data Quality & Statistical Reasoning',description:'Strengthen data interpretation and quality-focused decision making.',provider:'iGOT Karmayogi',duration:'4 hours',level:'Priority'}]
+  return <><div className="page-actions"><div><span className="pill">Personalized for {employee.name}</span><h2>Training recommendations</h2><p>Courses are ordered around the learner’s highest-impact gaps.</p></div><button className="secondary" onClick={onLoad} disabled={loading}>{loading ? 'Loading…' : 'Refresh recommendations'}</button></div><div className="course-grid">{list.map((c,i) => <article className="course card" key={i}><div className="course-top"><span className="course-icon">{i === 0 ? '◎' : '↗'}</span><span className="pill orange">{c.level || 'Recommended'}</span></div><h3>{c.title || c.courseTitle || `Learning module ${i+1}`}</h3><p>{c.description || c.summary || 'Role-aligned learning recommendation.'}</p><div className="course-meta"><span>{c.provider || 'iGOT Karmayogi'}</span><span>{c.duration || 'Self-paced'}</span></div><button className="primary wide">Open course</button></article>)}</div></>
+}
+
+function Quiz({ quiz, answers, setAnswers, score, onGenerate, onSubmit, loading }) {
+  return <><div className="page-actions"><div><span className="pill">AI assessment</span><h2>Quiz studio</h2><p>Generate a short MCQ assessment and feed the result into adaptive scoring.</p></div><button className="primary" onClick={onGenerate} disabled={loading}>{loading ? 'Generating…' : 'Generate quiz'}</button></div>{quiz ? <div className="quiz-layout"><div>{quiz.questions?.map((q,i) => <article className="card question" key={i}><span className="question-no">Question {i+1}</span><h3>{q.questionText}</h3>{[['optionA','A'],['optionB','B'],['optionC','C'],['optionD','D']].map(([key,label]) => <label className={answers[i] === key ? 'option selected' : 'option'} key={key}><input type="radio" name={`q${i}`} checked={answers[i] === key} onChange={() => setAnswers({...answers,[i]:key})}/><b>{label}</b><span>{q[key]}</span></label>)}</article>)}</div><aside className="card quiz-side"><span className="pill orange">Adaptive engine</span><h3>Ready to score</h3><p>Answer the questions, then submit to calculate mastery and the next difficulty level.</p><button className="primary wide" onClick={onSubmit}>Submit assessment</button>{score && <div className="result"><strong>{score.score ?? score.percentage ?? 0}%</strong><span>{score.masteryLevel || score.mastery || 'Developing'}</span><p>Next: {score.nextDifficulty || score.recommendedDifficulty || 'MEDIUM'}</p></div>}</aside></div> : <div className="card empty large"><div className="empty-icon">✦</div><h3>No assessment generated yet</h3><p>Use the button above to generate a demo assessment from learning material.</p></div>}</>
+}
+
+export default App
